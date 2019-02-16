@@ -13,7 +13,8 @@ When you run image\_create without all required arguments, it'll print the follo
 ```
 usage: <output file name> <image size> <partition type> <bootable> [files]
 ```
-Here's the explanation of some of the arguments:
+Here's the explanation of the arguments:
+ - `output file name` - file name for the final image file
  - `image size` - size of the image, this option can also take units(16M, 1G, etc)
  - `partition type` - partiton type, currently supported are `fat16`, `fat32`, `ext2`, `ext3`, `ext4`
  - `bootable` - should the partition be bootable(`y` or `yes` to enable, anything else to disable)
