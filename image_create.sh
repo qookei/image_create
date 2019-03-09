@@ -48,14 +48,14 @@ sudo losetup /dev/loop0 $1
 case "$4" in
 	"dos" )
 		# For DOS layouts, install GRUB after the MBR.
-		cat << END_SFDISK | sudo sfdisk /dev/loop0
+		cat << END_SFDISK | sudo sfdisk --no-tell-kernel /dev/loop0
 label: dos
 16MiB + $dos_parttype
 END_SFDISK
 		;;
 	"gpt" )
 		# For GPT layouts, install GRUB to its own partition.
-		cat << END_SFDISK | sudo sfdisk /dev/loop0
+		cat << END_SFDISK | sudo sfdisk --no-tell-kernel /dev/loop0
 label: gpt
 - 16MiB 21686148-6449-6E6F-744E-656564454649
 - +     $gpt_type
