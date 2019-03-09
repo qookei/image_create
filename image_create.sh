@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 if (($# != 4 && $# != 5)); then
 	echo "usage: <output file name> <image size> <partition type> <bootable> [files]"
 	exit -1
