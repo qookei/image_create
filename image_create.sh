@@ -29,7 +29,8 @@ case "$3" in
 		exit -2;;
 esac
 
-dd if=/dev/zero of=$1 bs=$2 count=1
+rm -f $1
+fallocate -l $2 $1
 
 sudo losetup /dev/loop0 $1
 echo "256,$2,$part_type,$bootable write" | sudo sfdisk /dev/loop0
