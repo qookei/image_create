@@ -29,7 +29,7 @@ case "$4" in
 	"dos" )
 		rootpart="p1"
 		;;
-	"gpt" )
+	"gpt" | "x86_64-efi" )
 		rootpart="p2"
 		;;
 	* )
@@ -47,17 +47,27 @@ lodev=$(sudo losetup -f --show $1)
 
 case "$4" in
 	"dos" )
-		# For DOS layouts, install GRUB after the MBR.
+		# For DOS layouts, install GRUB's boot code after the MBR.
 		cat << END_SFDISK | sudo sfdisk --no-tell-kernel $lodev
 label: dos
 16MiB + $dos_parttype
 END_SFDISK
 		;;
 	"gpt" )
-		# For GPT layouts, install GRUB to its own partition.
+		# For GPT layouts, install GRUB's boot code to a "BIOS boot partition".
+		# GRUB will use the entire partition in this case.
 		cat << END_SFDISK | sudo sfdisk --no-tell-kernel $lodev
 label: gpt
 - 16MiB 21686148-6449-6E6F-744E-656564454649
+- +     $gpt_type
+END_SFDISK
+		;;
+	"x86_64-efi" )
+		# For GPT layouts, install GRUB's boot code to the EFI system partition.
+		# GRUB will create a file on that partition.
+		cat << END_SFDISK | sudo sfdisk --no-tell-kernel $lodev
+label: gpt
+- 16MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
 - +     $gpt_type
 END_SFDISK
 		;;
@@ -87,12 +97,30 @@ case "$3" in
 esac
 
 mountpoint=$(mktemp -d)
-
 echo "tmp mountpoint is $mountpoint"
-
 sudo mount $lodev$rootpart $mountpoint
-sudo mkdir -p $mountpoint/boot
-sudo grub-install --target=i386-pc --boot-directory=$mountpoint/boot $lodev
+
+sudo mkdir $mountpoint/boot
+
+case "$4" in
+	"dos" | "gpt" )
+		# i386-pc makes GRUB use the MBR or BIOS boot partition for its boot code,
+		# depending on the partition table type.
+		# Note that we do not have to partition the BIOS boot partition.
+		sudo grub-install --target=i386-pc --boot-directory=$mountpoint/boot $lodev
+		;;
+	"x86_64-efi" )
+		# EFI installations require the EFI system partition to be mounted.
+		sudo mkfs.vfat ${lodev}p1
+		sudo mkdir $mountpoint/boot/efi
+		sudo mount ${lodev}p1 $mountpoint/boot/efi
+		sudo grub-install --target=x86_64-efi --removable --boot-directory=$mountpoint/boot --no-uefi-secure-boot $lodev
+		sudo umount ${lodev}p1
+		;;
+	* )
+		echo "unexpected partition table layout";
+		exit -2;;
+esac
 
 if (($# == 5)); then
 	sudo cp -avr $5/* $mountpoint/
