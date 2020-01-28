@@ -32,6 +32,9 @@ case "$4" in
 	"gpt" | "x86_64-efi" )
 		rootpart="p2"
 		;;
+	"x86_64-efi-hybrid" )
+		rootpart="p3"
+		;;
 	* )
 		echo "unexpected partition table layout";
 		exit -2;;
@@ -71,6 +74,15 @@ label: gpt
 - +     $gpt_type
 END_SFDISK
 		;;
+	"x86_64-efi-hybrid" )
+		# Combined GRUB EFI + GRUB legacy layout
+		cat << END_SFDISK | sudo sfdisk --no-tell-kernel $lodev
+label: gpt
+- 16MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+- 16MiB 21686148-6449-6E6F-744E-656564454649
+- +     $gpt_type
+END_SFDISK
+		;;
 	* )
 		echo "unexpected partition table layout, how did we get here?";
 		exit -2;;
@@ -103,13 +115,16 @@ sudo mount $lodev$rootpart $mountpoint
 sudo mkdir $mountpoint/boot
 
 case "$4" in
-	"dos" | "gpt" )
+	"dos" | "gpt" | "x86_64-efi-hybrid" )
 		# i386-pc makes GRUB use the MBR or BIOS boot partition for its boot code,
 		# depending on the partition table type.
 		# Note that we do not have to partition the BIOS boot partition.
 		sudo grub-install --target=i386-pc --boot-directory=$mountpoint/boot $lodev
 		;;
-	"x86_64-efi" )
+esac
+
+case "$4" in
+	"x86_64-efi" | "x86_64-efi-hybrid" )
 		# EFI installations require the EFI system partition to be mounted.
 		sudo mkfs.vfat ${lodev}p1
 		sudo mkdir $mountpoint/boot/efi
@@ -117,9 +132,6 @@ case "$4" in
 		sudo grub-install --target=x86_64-efi --removable --boot-directory=$mountpoint/boot --no-uefi-secure-boot $lodev
 		sudo umount ${lodev}p1
 		;;
-	* )
-		echo "unexpected partition table layout";
-		exit -2;;
 esac
 
 if (($# == 5)); then
