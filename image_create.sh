@@ -134,7 +134,7 @@ case "$4" in
 		if ! [ -d qloader2 ]; then
 			git clone https://github.com/qword-os/qloader2.git
 		fi
-		sudo qloader2/qloader2-install qloader2/qloader2.bin ${lodev} 34816
+		sudo qloader2/qloader2-install qloader2/qloader2.bin ${lodev} 2048
 		;;
 	"x86_64-efi" | "x86_64-efi-hybrid" )
 		# EFI installations require the EFI system partition to be mounted.
