@@ -29,7 +29,7 @@ case "$4" in
 	"dos" )
 		rootpart="p1"
 		;;
-	"gpt" | "x86_64-efi" )
+	"gpt" | "gpt-qloader2" | "x86_64-efi" )
 		rootpart="p2"
 		;;
 	"x86_64-efi-hybrid" )
@@ -59,6 +59,15 @@ END_SFDISK
 	"gpt" )
 		# For GPT layouts, install GRUB's boot code to a "BIOS boot partition".
 		# GRUB will use the entire partition in this case.
+		cat << END_SFDISK | sudo sfdisk --no-tell-kernel $lodev
+label: gpt
+- 16MiB 21686148-6449-6E6F-744E-656564454649
+- +     $gpt_type
+END_SFDISK
+		;;
+	"gpt-qloader2" )
+		# For GPT layouts, install qloader2's boot code to a "BIOS boot partition".
+		# qloader2 will use the entire partition in this case.
 		cat << END_SFDISK | sudo sfdisk --no-tell-kernel $lodev
 label: gpt
 - 16MiB 21686148-6449-6E6F-744E-656564454649
@@ -121,9 +130,12 @@ case "$4" in
 		# Note that we do not have to partition the BIOS boot partition.
 		sudo grub-install --target=i386-pc --boot-directory=$mountpoint/boot $lodev
 		;;
-esac
-
-case "$4" in
+	"gpt-qloader2" )
+		if ! [ -d qloader2 ]; then
+			git clone https://github.com/qword-os/qloader2.git
+		fi
+		sudo qloader2/qloader2-install qloader2/qloader2.bin ${lodev} 34816
+		;;
 	"x86_64-efi" | "x86_64-efi-hybrid" )
 		# EFI installations require the EFI system partition to be mounted.
 		sudo mkfs.vfat ${lodev}p1
