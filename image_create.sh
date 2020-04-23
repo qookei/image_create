@@ -132,7 +132,7 @@ case "$4" in
 		;;
 	"gpt-qloader2" )
 		if ! [ -d qloader2 ]; then
-			git clone https://github.com/qword-os/qloader2.git
+			git clone https://github.com/qloader2/qloader2.git
 		fi
 		sudo qloader2/qloader2-install qloader2/qloader2.bin ${lodev} 2048
 		;;
