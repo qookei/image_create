@@ -29,7 +29,7 @@ case "$4" in
 	"dos" )
 		rootpart="p1"
 		;;
-	"gpt" | "gpt-qloader2" | "x86_64-efi" )
+	"gpt" | "gpt-limine" | "x86_64-efi" )
 		rootpart="p2"
 		;;
 	"x86_64-efi-hybrid" )
@@ -65,9 +65,9 @@ label: gpt
 - +     $gpt_type
 END_SFDISK
 		;;
-	"gpt-qloader2" )
-		# For GPT layouts, install qloader2's boot code to a "BIOS boot partition".
-		# qloader2 will use the entire partition in this case.
+	"gpt-limine" )
+		# For GPT layouts, install limine's boot code to a "BIOS boot partition".
+		# limine will use the entire partition in this case.
 		cat << END_SFDISK | sudo sfdisk --no-tell-kernel $lodev
 label: gpt
 - 16MiB 21686148-6449-6E6F-744E-656564454649
@@ -130,11 +130,12 @@ case "$4" in
 		# Note that we do not have to partition the BIOS boot partition.
 		sudo grub-install --target=i386-pc --boot-directory=$mountpoint/boot $lodev
 		;;
-	"gpt-qloader2" )
-		if ! [ -d qloader2 ]; then
-			git clone https://github.com/qloader2/qloader2.git
+	"gpt-limine" )
+		if ! [ -d limine ]; then
+			git clone https://github.com/limine-bootloader/limine.git
+			make -C limine limine-install
 		fi
-		sudo qloader2/qloader2-install qloader2/qloader2.bin ${lodev} 2048
+		sudo limine/limine-install limine/limine.bin ${lodev} 2048
 		;;
 	"x86_64-efi" | "x86_64-efi-hybrid" )
 		# EFI installations require the EFI system partition to be mounted.
