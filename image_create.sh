@@ -26,10 +26,10 @@ esac
 
 rootpart=""
 case "$4" in
-	"dos" )
+	"dos" | "gpt-limine" )
 		rootpart="p1"
 		;;
-	"gpt" | "gpt-limine" | "x86_64-efi" )
+	"gpt" | "x86_64-efi" )
 		rootpart="p2"
 		;;
 	"x86_64-efi-hybrid" )
@@ -66,11 +66,9 @@ label: gpt
 END_SFDISK
 		;;
 	"gpt-limine" )
-		# For GPT layouts, install limine's boot code to a "BIOS boot partition".
-		# limine will use the entire partition in this case.
+		# For GPT layouts, limine's boot code is embedded in GPT structures.
 		cat << END_SFDISK | sudo sfdisk --no-tell-kernel $lodev
 label: gpt
-- 16MiB 21686148-6449-6E6F-744E-656564454649
 - +     $gpt_type
 END_SFDISK
 		;;
@@ -131,11 +129,20 @@ case "$4" in
 		sudo grub-install --target=i386-pc --boot-directory=$mountpoint/boot $lodev
 		;;
 	"gpt-limine" )
-		if ! [ -d limine ]; then
-			git clone https://github.com/limine-bootloader/limine.git
+		# Use installed limine-install if available
+		LIMINE_INSTALL="limine-install"
+		if ! command -v "$LIMINE_INSTALL" &> /dev/null
+		then
+			if [ -d limine ]; then
+				rm -rf limine
+			fi
+
+			git clone https://github.com/limine-bootloader/limine.git --branch=v1.0-branch --depth=1
 			make -C limine limine-install
+
+			LIMINE_INSTALL="./limine/limine-install"
 		fi
-		sudo limine/limine-install limine/limine.bin ${lodev} 2048
+		sudo "$LIMINE_INSTALL" ${lodev}
 		;;
 	"x86_64-efi" | "x86_64-efi-hybrid" )
 		# EFI installations require the EFI system partition to be mounted.
