@@ -41,7 +41,7 @@ case "$4" in
 esac
 
 # UUID of Windows data partition. Choose something else depending on your needs.
-gpt_type="EBD0A0A2-B9E5-4433-87C0-68B6B72699C7"
+gpt_type=${GPT_TYPE:="EBD0A0A2-B9E5-4433-87C0-68B6B72699C7"}
 
 rm -f $1
 fallocate -l $2 $1
