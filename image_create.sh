@@ -29,7 +29,7 @@ case "$4" in
 	"dos" | "gpt-limine" )
 		rootpart="p1"
 		;;
-	"gpt" | "x86_64-efi" )
+	"gpt" | "x86_64-efi" | "gpt-tomatboot" )
 		rootpart="p2"
 		;;
 	"x86_64-efi-hybrid" )
@@ -72,8 +72,8 @@ label: gpt
 - +     $gpt_type
 END_SFDISK
 		;;
-	"x86_64-efi" )
-		# For GPT layouts, install GRUB's boot code to the EFI system partition.
+	"x86_64-efi" | "gpt-tomatboot" )
+		# For GPT layouts, install GRUB's/tomatboot's boot code to the EFI system partition.
 		# GRUB will create a file on that partition.
 		cat << END_SFDISK | sudo sfdisk --no-tell-kernel $lodev
 label: gpt
@@ -143,6 +143,15 @@ case "$4" in
 			LIMINE_INSTALL="./limine/limine-install"
 		fi
 		sudo "$LIMINE_INSTALL" ${lodev}
+		;;
+	"gpt-tomatboot" )
+		# EFI installations require the EFI system partition to be mounted.
+		sudo mkfs.vfat ${lodev}p1
+		sudo mkdir $mountpoint/boot/efi
+		sudo mount ${lodev}p1 $mountpoint/boot/efi
+		sudo mkdir -p $mountpoint/boot/efi/efi/boot
+		sudo cp tomatboot.efi $mountpoint/boot/efi/efi/boot/BOOTX64.EFI
+		sudo umount ${lodev}p1
 		;;
 	"x86_64-efi" | "x86_64-efi-hybrid" )
 		# EFI installations require the EFI system partition to be mounted.
