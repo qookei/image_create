@@ -146,6 +146,11 @@ case "$4" in
 		;;&
 	"gpt-tomatboot" | "gpt-stivale-hybrid" )
 		# EFI installations require the EFI system partition to be mounted.
+		if ! [ -f tomatboot.efi ];
+		then
+			wget https://raw.githubusercontent.com/qookei/image_create/master/tomatboot.efi
+		fi
+
 		sudo mkfs.vfat ${lodev}p1
 		sudo mkdir $mountpoint/boot/efi
 		sudo mount ${lodev}p1 $mountpoint/boot/efi
