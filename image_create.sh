@@ -3,7 +3,21 @@
 set -e
 
 if (($# != 4 && $# != 5)); then
-	echo "usage: <output file name> <image size> <partition type> <dos or gpt> [files]"
+	echo "usage: <output file name> <image size> <partition type> <layout> [files]"
+	echo "Supported partition types:"
+	echo -e "\t- fat16"
+	echo -e "\t- fat32"
+	echo -e "\t- ext2"
+	echo -e "\t- ext3"
+	echo -e "\t- ext4\n"
+	echo "Supported layouts:"
+	echo -e "\t- dos - MBR image with GRUB 2 for legacy BIOS"
+	echo -e "\t- gpt - GPT image with GRUB 2 for legacy BIOS"
+	echo -e "\t- x86_64-efi - GPT image with GRUB 2 for UEFI"
+	echo -e "\t- x86_64-efi-hybrid - GPT image with GRUB 2 for both UEFI and legacy BIOS"
+	echo -e "\t- gpt-limine - GPT image with limine for legacy BIOS"
+	echo -e "\t- gpt-tomatboot - GPT image with TomatBoot for UEFI"
+	echo -e "\t- gpt-stivale-hybrid - GPT image with limine for legacy BIOS and TomatBoot for UEFI\n"
 	exit -1
 fi
 
