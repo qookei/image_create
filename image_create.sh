@@ -29,7 +29,7 @@ case "$4" in
 	"dos" | "gpt-limine" )
 		rootpart="p1"
 		;;
-	"gpt" | "x86_64-efi" | "gpt-tomatboot" )
+	"gpt" | "x86_64-efi" | "gpt-tomatboot" | "gpt-stivale-hybrid" )
 		rootpart="p2"
 		;;
 	"x86_64-efi-hybrid" )
@@ -72,7 +72,7 @@ label: gpt
 - +     $gpt_type
 END_SFDISK
 		;;
-	"x86_64-efi" | "gpt-tomatboot" )
+	"x86_64-efi" | "gpt-tomatboot" | "gpt-stivale-hybrid" )
 		# For GPT layouts, install GRUB's/tomatboot's boot code to the EFI system partition.
 		# GRUB will create a file on that partition.
 		cat << END_SFDISK | sudo sfdisk --no-tell-kernel $lodev
@@ -127,8 +127,8 @@ case "$4" in
 		# depending on the partition table type.
 		# Note that we do not have to partition the BIOS boot partition.
 		sudo grub-install --target=i386-pc --boot-directory=$mountpoint/boot $lodev
-		;;
-	"gpt-limine" )
+		;;&
+	"gpt-limine" | "gpt-stivale-hybrid" )
 		# Use installed limine-install if available
 		LIMINE_INSTALL="limine-install"
 		if ! command -v "$LIMINE_INSTALL" &> /dev/null
@@ -143,8 +143,8 @@ case "$4" in
 			LIMINE_INSTALL="./limine/limine-install"
 		fi
 		sudo "$LIMINE_INSTALL" ${lodev}
-		;;
-	"gpt-tomatboot" )
+		;;&
+	"gpt-tomatboot" | "gpt-stivale-hybrid" )
 		# EFI installations require the EFI system partition to be mounted.
 		sudo mkfs.vfat ${lodev}p1
 		sudo mkdir $mountpoint/boot/efi
