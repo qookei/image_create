@@ -91,8 +91,8 @@ END_SFDISK
 		# GRUB will create a file on that partition.
 		cat << END_SFDISK | sudo sfdisk --no-tell-kernel $lodev
 label: gpt
-- 16MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
-- +     $gpt_type
+- 512MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+- +      $gpt_type
 END_SFDISK
 		;;
 	"x86_64-efi-hybrid" )
