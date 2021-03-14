@@ -161,12 +161,11 @@ fallocate -l "$size" "$output"
 lodev=$(sudo losetup -f --show "$output")
 
 case "$partscheme" in
-	dos)
+	mbr)
 		# For MBR layouts, reserve some space for the loader after the MBR.
 		cat << END_SFDISK | sudo sfdisk --no-tell-kernel "$lodev"
 label: dos
-- 16MiB
-- +     $dos_parttype
+16MiB + $dos_parttype
 END_SFDISK
 		;;
 	gpt)
@@ -248,7 +247,7 @@ if [ "$efi" ]; then
 
 	case "$loader" in
 		grub)
-			sudo grub-install --target=x86_64-efi --removable --boot-directory="$mountpoint/boot" --no-uefi-secure-boot "$lodev"
+			sudo grub-install --target=x86_64-efi --removable --boot-directory="$mountpoint/boot" "$lodev"
 			;;
 		limine)
 			sudo cp limine/BOOTX64.EFI "$mountpoint/boot/efi/efi/boot/BOOTX64.EFI"
