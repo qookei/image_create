@@ -138,13 +138,15 @@ case "$parttype" in
 		dos_parttype="83";;
 esac
 
-rootpart=""
+rootpart=
 case "$partscheme" in
 	mbr)
 		rootpart="p1"
 		;;
 	gpt)
-		if [ "$loader" = "grub" ] && [ "$bios" ] && [ "$efi" ]; then
+		if [ "$loader" = "limine" ] && [ "$bios" ] && [ -z "$efi" ]; then
+			rootpart="p1"
+		elif [ "$loader" = "grub" ] && [ "$bios" ] && [ "$efi" ]; then
 			rootpart="p3"
 		else
 			rootpart="p2"
@@ -188,7 +190,7 @@ END_SFDISK
 			cat << END_SFDISK | sudo sfdisk --no-tell-kernel "$lodev"
 label: gpt
 - 16MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
-- +      $gpt_type
+- +     $gpt_type
 END_SFDISK
 		else
 			# Combined GRUB EFI + GRUB legacy layout.
