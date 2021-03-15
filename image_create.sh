@@ -236,6 +236,7 @@ if [ "$bios" ]; then
 			sudo grub-install --target=i386-pc --boot-directory="$mountpoint/boot" "$lodev"
 			;;
 		limine)
+			sudo cp limine/limine.sys "$mountpoint/boot"
 			(cd limine; sudo ./limine-install-linux-x86_64 "$lodev")
 			;;
 	esac
