@@ -9,11 +9,12 @@ A simple tool to generate partitioned hard disk images.
    - mkfs.vfat for fat16/32 (note: also required for EFI images, since they need a FAT32 ESP partition)
    - mkfs.ext2/3/4 for ext2/3/4 respectively
  - grub-install or git (for cloning limine, can omit cloning by specifying `-n`)
+ - libguestfs (when using `-g`)
 
 ## Usage
 When you run image\_create without any arguments, or with `-h`, it'll print the following usage message:
 ```
-usage: image_create.sh [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-b] [-e] [-n] [-c path]
+usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-b] [-e] [-n] [-g] [-c path]
 
 Supported arguments:
 	 -o output                specifies path to output image
@@ -28,8 +29,10 @@ Supported arguments:
 	 -b                       makes the image BIOS bootable
 	 -e                       makes the image EFI bootable
 	 -n                       don't fetch Limine (reuses existing './limine/' directory)
+	 -g                       use libguestfs instead of native mkfs and mount (allows for rootless image creation)
+	                          note: only limine is supported with this option
 	 -c path                  copy files from the specified directory into the root of the image
-	 -h                       show this help message
+	 -h                       shows this help message
 
 When using GPT, you can specify the GUID of the root partition by setting the GPT_TYPE environment variable.
 By default, the GUID for a Windows data partition is used.
