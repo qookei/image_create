@@ -176,6 +176,8 @@ esac
 # UUID of Windows data partition. Choose something else depending on your needs.
 gpt_type=${GPT_TYPE:="EBD0A0A2-B9E5-4433-87C0-68B6B72699C7"}
 
+sfdisk_tool="$(whereis -b sfdisk | cut -d':' -f2 | xargs)"
+
 rm -f "$output"
 fallocate -l "$size" "$output"
 
@@ -193,7 +195,7 @@ fi
 case "$partscheme" in
 	mbr)
 		# For MBR layouts, reserve some space for the loader after the MBR.
-		cat << END_SFDISK | $auth_with sfdisk --no-tell-kernel "$output_name"
+		cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
 label: dos
 16MiB + $dos_parttype
 END_SFDISK
@@ -202,27 +204,27 @@ END_SFDISK
 		if [ -z "$efi" ] && [ "$loader" = "grub" ]; then
 			# Create a BIOS boot partition for GRUB's boot code.
 			# GRUB will use the entire partition in this case.
-			cat << END_SFDISK | $auth_with sfdisk --no-tell-kernel "$output_name"
+			cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
 label: gpt
 - 16MiB 21686148-6449-6E6F-744E-656564454649
 - +     $gpt_type
 END_SFDISK
 		elif [ -z "$efi" ] && [ "$loader" = "limine" ]; then
 			# Limine's boot code is embedded in GPT structures.
-			cat << END_SFDISK | $auth_with sfdisk --no-tell-kernel "$output_name"
+			cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
 label: gpt
 - +     $gpt_type
 END_SFDISK
 		elif [ -z "$bios" ] || [ "$loader" = "limine" ]; then
 			# Create an EFI system partition for GRUB's/Limine's boot files.
-			cat << END_SFDISK | $auth_with sfdisk --no-tell-kernel "$output_name"
+			cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
 label: gpt
 - 16MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
 - +     $gpt_type
 END_SFDISK
 		else
 			# Combined GRUB EFI + GRUB legacy layout.
-			cat << END_SFDISK | $auth_with sfdisk --no-tell-kernel "$output_name"
+			cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
 label: gpt
 - 16MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
 - 16MiB 21686148-6449-6E6F-744E-656564454649
