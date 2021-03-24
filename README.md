@@ -36,4 +36,6 @@ Supported arguments:
 
 When using GPT, you can specify the GUID of the root partition by setting the GPT_TYPE environment variable.
 By default, the GUID for a Windows data partition is used.
+
+You can also specify the path to the directory with limine binaries (which automatically implies -n) by setting LIMINE_PATH.
 ```

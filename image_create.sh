@@ -24,8 +24,9 @@ usage() {
 	echo -e "\t -h                       shows this help message\n"
 
 	echo "When using GPT, you can specify the GUID of the root partition by setting the GPT_TYPE environment variable."
-	echo "By default, the GUID for a Windows data partition is used."
+	echo -e "By default, the GUID for a Windows data partition is used.\n"
 
+	echo "You can also specify the path to the directory with limine binaries (which automatically implies -n) by setting LIMINE_PATH."
 }
 
 if [ $# -eq 0 ]; then
@@ -118,13 +119,23 @@ if [ "$efi" ] && [ "$partscheme" != "gpt" ]; then
 	exit 1;
 fi
 
+limine_path="./limine"
+
 if [ "$loader" = "limine" ]; then
-	if [ -z $no_fetch_limine ]; then
-		rm -rf limine
+	if [ "$LIMINE_PATH" ]; then
+		no_fetch_limine=1
+		limine_path="$LIMINE_PATH"
 	fi
 
-	if [ ! -d limine ]; then
+	if [ -z $no_fetch_limine ]; then
+		rm -rf "$limine_path"
+	fi
+
+	if [ ! -d "$limine_path" ] && [ -z "$LIMINE_PATH" ]; then
 		git clone https://github.com/limine-bootloader/limine --branch=v2.0-branch-binary --depth=1
+	elif [ ! -d "$limine_path" ]; then
+		echo "Directory specified by LIMINE_PATH doesn't exist."
+		exit 1
 	fi
 fi
 
@@ -254,8 +265,8 @@ if [ ! "$use_guestfs" ]; then
 				sudo grub-install --target=i386-pc --boot-directory="$mountpoint/boot" "$lodev"
 				;;
 			limine)
-				sudo cp limine/limine.sys "$mountpoint/boot"
-				(cd limine; sudo ./limine-install-linux-x86_64 "$lodev")
+				sudo cp "$limine_path/limine.sys" "$mountpoint/boot"
+				(cd "$limine_path"; sudo ./limine-install-linux-x86_64 "$lodev")
 				;;
 		esac
 	fi
@@ -287,7 +298,7 @@ if [ ! "$use_guestfs" ]; then
 	sudo losetup -d "$lodev"
 else
 	if [ "$bios" ]; then
-		limine/limine-install-linux-x86_64 "$output"
+		"$limine_path/limine-install-linux-x86_64" "$output"
 	fi
 
 	cmds="run
@@ -299,7 +310,7 @@ mkdir /boot"
 
 	if [ "$bios" ]; then
 		cmds="$cmds
-copy-in limine/limine.sys /boot/"
+copy-in '$limine_path/limine.sys' /boot/"
 	fi
 
 	if [ "$efi" ]; then
@@ -309,7 +320,7 @@ mkdir /boot/efi
 mount /dev/sda1 /boot/efi
 mkdir /boot/efi/efi
 mkdir /boot/efi/efi/boot
-copy-in limine/BOOTX64.EFI /boot/efi/efi/boot/"
+copy-in '$limine_path/BOOTX64.EFI' /boot/efi/efi/boot/"
 	fi
 
 	guestfish -a "$output" <<< "$cmds"
