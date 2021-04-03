@@ -295,7 +295,7 @@ if [ ! "$use_guestfs" ]; then
 		sudo cp -avr "$copy_dir_path"/* "$mountpoint/"
 	fi
 
-	sudo umount "$lodev$rootpart"
+	sudo umount "${lodev}p${rootpart}"
 	rmdir "$mountpoint"
 	sudo losetup -d "$lodev"
 else
