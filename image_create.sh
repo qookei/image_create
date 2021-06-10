@@ -284,7 +284,7 @@ if [ ! "$use_guestfs" ]; then
 				sudo grub-install --target=x86_64-efi --removable --boot-directory="$mountpoint/boot" "$lodev"
 				;;
 			limine)
-				sudo cp limine/BOOTX64.EFI "$mountpoint/boot/efi/efi/boot/BOOTX64.EFI"
+				sudo cp "$limine_path/BOOTX64.EFI" "$mountpoint/boot/efi/efi/boot/BOOTX64.EFI"
 				;;
 		esac
 
