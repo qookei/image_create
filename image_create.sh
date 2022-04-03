@@ -268,7 +268,7 @@ if [ ! "$use_guestfs" ]; then
 				;;
 			limine)
 				sudo cp "$limine_path/limine.sys" "$mountpoint/boot"
-				(cd "$limine_path"; sudo ./limine-install-linux-x86_64 "$lodev")
+				(cd "$limine_path"; sudo ./limine-deploy "$lodev")
 				;;
 		esac
 	fi
@@ -300,7 +300,7 @@ if [ ! "$use_guestfs" ]; then
 	sudo losetup -d "$lodev"
 else
 	if [ "$bios" ]; then
-		"$limine_path/limine-install-linux-x86_64" "$output"
+		(cd "$limine_path"; ./limine-deploy "$output")
 	fi
 
 	cmds="run
