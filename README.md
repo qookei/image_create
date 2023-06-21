@@ -8,8 +8,9 @@ A simple tool to generate partitioned hard disk images.
  - mkfs for the corresponding file system
    - mkfs.vfat for fat16/32 (note: also required for EFI images, since they need a FAT32 ESP partition)
    - mkfs.ext2/3/4 for ext2/3/4 respectively
- - grub-install or git (for cloning limine, can omit cloning by specifying `-n`)
+ - grub-install, or git (for cloning limine, can omit cloning by specifying `-n`)
  - libguestfs (when using `-g`)
+ - make, C compiler (for compiling the `limine` utility after cloning it, not done when using existing directory)
 
 ## Usage
 When you run image\_create without any arguments, or with `-h`, it'll print the following usage message:

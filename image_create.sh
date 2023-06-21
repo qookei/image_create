@@ -132,7 +132,8 @@ if [ "$loader" = "limine" ]; then
 	fi
 
 	if [ ! -d "$limine_path" ] && [ -z "$LIMINE_PATH" ]; then
-		git clone https://github.com/limine-bootloader/limine --branch=v2.0-branch-binary --depth=1
+		git clone https://github.com/limine-bootloader/limine --branch=v5.x-branch-binary --depth=1
+		make -C limine
 	elif [ ! -d "$limine_path" ]; then
 		echo "Directory specified by LIMINE_PATH doesn't exist."
 		exit 1
@@ -267,8 +268,8 @@ if [ ! "$use_guestfs" ]; then
 				sudo grub-install --target=i386-pc --boot-directory="$mountpoint/boot" "$lodev"
 				;;
 			limine)
-				sudo cp "$limine_path/limine.sys" "$mountpoint/boot"
-				sudo "$limine_path/limine-deploy" "$lodev"
+				sudo cp "$limine_path/limine-bios.sys" "$mountpoint/boot"
+				sudo "$limine_path/limine" bios-install "$lodev"
 				;;
 		esac
 	fi
