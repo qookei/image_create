@@ -301,7 +301,7 @@ if [ ! "$use_guestfs" ]; then
 	sudo losetup -d "$lodev"
 else
 	if [ "$bios" ]; then
-		"$limine_path/limine-deploy" "$output"
+		"$limine_path/limine" bios-install "$output"
 	fi
 
 	cmds="run
@@ -313,7 +313,7 @@ mkdir /boot"
 
 	if [ "$bios" ]; then
 		cmds="$cmds
-copy-in '$limine_path/limine.sys' /boot/"
+copy-in '$limine_path/limine-bios.sys' /boot/"
 	fi
 
 	if [ "$efi" ]; then
