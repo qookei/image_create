@@ -158,17 +158,20 @@ case "$parttype" in
 		dos_parttype="83";;
 esac
 
+bootpart=
 rootpart=
 case "$partscheme" in
 	mbr)
-		rootpart="1"
+		bootpart="1"
+		rootpart="2"
 		;;
 	gpt)
-		if [ "$loader" = "limine" ] && [ "$bios" ] && [ -z "$efi" ]; then
-			rootpart="1"
-		elif [ "$loader" = "grub" ] && [ "$bios" ] && [ "$efi" ]; then
+		if [ "$loader" = "grub" ] && [ "$bios" ]; then
+			# Partition 1 is the GRUB BIOS boot partition.
+			bootpart="2"
 			rootpart="3"
 		else
+			bootpart="1"
 			rootpart="2"
 		fi
 		;;
@@ -193,12 +196,20 @@ else
 	auth_with="sudo"
 fi
 
+# Every one of these layouts includes a FAT32 /boot/ partition,
+# optionally a partition for GRUB's boot code, and the rootfs partition.
+
+# The /boot/ partition doubles as the ESP for EFI images, and is otherwise
+# necessary since Limine >= 6.0 drops support for Ext2/3/4. For images using
+# GRUB it is kept for consistency and to simplify the script logic.
+
 case "$partscheme" in
 	mbr)
-		# For MBR layouts, reserve some space for the loader after the MBR.
+		# For MBR layouts, reserve some space before the first partition.
 		cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
 label: dos
-16MiB + $dos_parttype
+16MiB 256MiB 0c
+- +          $dos_parttype
 END_SFDISK
 		;;
 	gpt)
@@ -207,29 +218,31 @@ END_SFDISK
 			# GRUB will use the entire partition in this case.
 			cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
 label: gpt
-- 16MiB 21686148-6449-6E6F-744E-656564454649
-- +     $gpt_type
+- 16MiB  21686148-6449-6E6F-744E-656564454649
+- 256MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+- +      $gpt_type
 END_SFDISK
 		elif [ -z "$efi" ] && [ "$loader" = "limine" ]; then
 			# Limine's boot code is embedded in GPT structures.
 			cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
 label: gpt
-- +     $gpt_type
+- 256MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+- +      $gpt_type
 END_SFDISK
 		elif [ -z "$bios" ] || [ "$loader" = "limine" ]; then
 			# Create an EFI system partition for GRUB's/Limine's boot files.
 			cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
 label: gpt
-- 16MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
-- +     $gpt_type
+- 256MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+- +      $gpt_type
 END_SFDISK
 		else
 			# Combined GRUB EFI + GRUB legacy layout.
 			cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
 label: gpt
-- 16MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
-- 16MiB 21686148-6449-6E6F-744E-656564454649
-- +     $gpt_type
+- 16MiB  21686148-6449-6E6F-744E-656564454649
+- 256MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+- +      $gpt_type
 END_SFDISK
 		fi
 		;;
@@ -238,6 +251,9 @@ esac
 if [ ! "$use_guestfs" ]; then
 	sudo losetup -d "$lodev"
 	lodev=$(sudo losetup -Pf --show "$output")
+
+	# Format the /boot/ partition as FAT32.
+	sudo mkfs.vfat -F 32 "${lodev}p$bootpart"
 
 	# Format root partition according to user-chosen type.
 	case "$parttype" in
@@ -258,6 +274,7 @@ if [ ! "$use_guestfs" ]; then
 	sudo mount "${lodev}p$rootpart" "$mountpoint"
 
 	sudo mkdir "$mountpoint/boot"
+	sudo mount "${lodev}p$bootpart" "$mountpoint/boot"
 
 	if [ "$bios" ]; then
 		case "$loader" in
@@ -275,28 +292,24 @@ if [ ! "$use_guestfs" ]; then
 	fi
 
 	if [ "$efi" ]; then
-		sudo mkfs.vfat "${lodev}p1"
-		sudo mkdir "$mountpoint/boot/efi"
-		sudo mount "${lodev}p1" "$mountpoint/boot/efi"
-		sudo mkdir -p "$mountpoint/boot/efi/efi/boot"
+		sudo mkdir -p "$mountpoint/boot/efi/boot"
 
 		case "$loader" in
 			grub)
 				sudo grub-install --target=x86_64-efi --removable --boot-directory="$mountpoint/boot" "$lodev"
 				;;
 			limine)
-				sudo cp "$limine_path/BOOTX64.EFI" "$mountpoint/boot/efi/efi/boot/BOOTX64.EFI"
+				sudo cp "$limine_path/BOOTX64.EFI" "$mountpoint/boot/efi/boot/BOOTX64.EFI"
 				;;
 		esac
-
-		sudo umount "${lodev}p1"
 	fi
 
 	if [ "$copy_dir_path" ]; then
 		sudo cp -avr "$copy_dir_path"/* "$mountpoint/"
 	fi
 
-	sudo umount "${lodev}p${rootpart}"
+	sudo umount "${lodev}p$bootpart"
+	sudo umount "${lodev}p$rootpart"
 	rmdir "$mountpoint"
 	sudo losetup -d "$lodev"
 else
@@ -305,11 +318,13 @@ else
 	fi
 
 	cmds="run
+mkfs vfat /dev/sda$bootpart
 mkfs $parttype /dev/sda$rootpart"
 
 	cmds="$cmds
 mount /dev/sda$rootpart /
-mkdir /boot"
+mkdir /boot
+mount /dev/sda$bootpart /boot/"
 
 	if [ "$bios" ]; then
 		cmds="$cmds
@@ -318,12 +333,9 @@ copy-in '$limine_path/limine-bios.sys' /boot/"
 
 	if [ "$efi" ]; then
 		cmds="$cmds
-mkfs vfat /dev/sda1
 mkdir /boot/efi
-mount /dev/sda1 /boot/efi
-mkdir /boot/efi/efi
-mkdir /boot/efi/efi/boot
-copy-in '$limine_path/BOOTX64.EFI' /boot/efi/efi/boot/"
+mkdir /boot/efi/boot
+copy-in '$limine_path/BOOTX64.EFI' /boot/efi/boot/"
 	fi
 
 	guestfish -a "$output" <<< "$cmds"
