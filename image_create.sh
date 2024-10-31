@@ -171,17 +171,6 @@ sfdisk_tool="$(whereis -b sfdisk | cut -d':' -f2 | xargs)"
 rm -f "$output"
 fallocate -l "$size" "$output"
 
-output_name=
-auth_with=""
-
-if [ "$use_guestfs" ]; then
-	output_name="$output"
-else
-	lodev=$(sudo losetup -f --show "$output")
-	output_name="$lodev"
-	auth_with="sudo"
-fi
-
 # Every one of these layouts includes a FAT32 /boot/ partition,
 # optionally a partition for GRUB's boot code, and the rootfs partition.
 
@@ -192,7 +181,7 @@ fi
 case "$partscheme" in
 	mbr)
 		# For MBR layouts, reserve some space before the first partition.
-		cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
+		cat << END_SFDISK | "$sfdisk_tool" --no-tell-kernel "$output"
 label: dos
 16MiB 256MiB 0c
 - +          $dos_parttype
@@ -202,7 +191,7 @@ END_SFDISK
 		if [ -z "$efi" ] && [ "$loader" = "grub" ]; then
 			# Create a BIOS boot partition for GRUB's boot code.
 			# GRUB will use the entire partition in this case.
-			cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
+			cat << END_SFDISK | "$sfdisk_tool" --no-tell-kernel "$output"
 label: gpt
 - 16MiB  21686148-6449-6E6F-744E-656564454649
 - 256MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
@@ -210,21 +199,21 @@ label: gpt
 END_SFDISK
 		elif [ -z "$efi" ] && [ "$loader" = "limine" ]; then
 			# Limine's boot code is embedded in GPT structures.
-			cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
+			cat << END_SFDISK | "$sfdisk_tool" --no-tell-kernel "$output"
 label: gpt
 - 256MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
 - +      $gpt_type
 END_SFDISK
 		elif [ -z "$bios" ] || [ "$loader" = "limine" ]; then
 			# Create an EFI system partition for GRUB's/Limine's boot files.
-			cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
+			cat << END_SFDISK | "$sfdisk_tool" --no-tell-kernel "$output"
 label: gpt
 - 256MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
 - +      $gpt_type
 END_SFDISK
 		else
 			# Combined GRUB EFI + GRUB legacy layout.
-			cat << END_SFDISK | $auth_with $sfdisk_tool --no-tell-kernel "$output_name"
+			cat << END_SFDISK | "$sfdisk_tool" --no-tell-kernel "$output"
 label: gpt
 - 16MiB  21686148-6449-6E6F-744E-656564454649
 - 256MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
@@ -235,7 +224,6 @@ END_SFDISK
 esac
 
 if [ ! "$use_guestfs" ]; then
-	sudo losetup -d "$lodev"
 	lodev=$(sudo losetup -Pf --show "$output")
 
 	# Format the /boot/ partition as FAT32.
