@@ -3,7 +3,7 @@
 set -e
 
 usage() {
-	echo -e "usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-b] [-e] [-g] [-c path]\n"
+	echo -e "usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-b] [-e] [-g]\n"
 
 	echo -e "Supported arguments:"
 	echo -e "\t -o output                specifies path to output image"
@@ -19,7 +19,6 @@ usage() {
 	echo -e "\t -e                       makes the image EFI bootable"
 	echo -e "\t -g                       use libguestfs instead of native mkfs and mount (allows for rootless image creation)"
 	echo -e "\t                          note: only limine is supported with this option"
-	echo -e "\t -c path                  copy files from the specified directory into the root of the image"
 	echo -e "\t -h                       shows this help message\n"
 
 	echo "When using GPT, you can specify the GUID of the root partition by setting the GPT_TYPE environment variable."
@@ -40,10 +39,9 @@ size=
 loader=
 bios=
 efi=
-copy_dir_path=
 use_guestfs=
 
-while getopts o:t:p:s:l:begc:h arg
+while getopts o:t:p:s:l:begh arg
 do
 	case $arg in
 		o) output="$OPTARG";;
@@ -68,7 +66,6 @@ do
 			;;
 		b) bios=1;;
 		e) efi=1;;
-		c) copy_dir_path="$OPTARG";;
 		g) use_guestfs=1;;
 		h) usage; exit 0;;
 		?) echo "See -h for help."; exit 1;;
@@ -291,10 +288,6 @@ if [ ! "$use_guestfs" ]; then
 				sudo cp "$limine_path/BOOTX64.EFI" "$mountpoint/boot/efi/boot/BOOTX64.EFI"
 				;;
 		esac
-	fi
-
-	if [ "$copy_dir_path" ]; then
-		sudo cp -avr "$copy_dir_path"/* "$mountpoint/"
 	fi
 
 	sudo umount "${lodev}p$bootpart"

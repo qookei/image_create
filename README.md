@@ -14,7 +14,7 @@ A simple tool to generate partitioned hard disk images.
 ## Usage
 When you run image\_create without any arguments, or with `-h`, it'll print the following usage message:
 ```
-usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-b] [-e] [-g] [-c path]
+usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-b] [-e] [-g]
 
 Supported arguments:
   -o output                specifies path to output image
@@ -30,7 +30,6 @@ Supported arguments:
   -e                       makes the image EFI bootable
   -g                       use libguestfs instead of native mkfs and mount (allows for rootless image creation)
                            note: only limine is supported with this option
-  -c path                  copy files from the specified directory into the root of the image
   -h                       shows this help message
 
 When using GPT, you can specify the GUID of the root partition by setting the GPT_TYPE environment variable.
