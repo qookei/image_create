@@ -14,7 +14,7 @@ A simple tool to generate partitioned hard disk images.
 ## Usage
 When you run image\_create without any arguments, or with `-h`, it'll print the following usage message:
 ```
-usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-b] [-e]
+usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-a arch] [-b] [-e]
 
 Supported arguments:
   -o output                specifies path to output image
@@ -26,6 +26,8 @@ Supported arguments:
   -s size                  specifies the image size, eg: 1G, 512M
   -l loader                specifies the loader to use
                            supported loaders: grub, limine
+  -a arch                  create image for the requested architecture
+                           default: x86_64, supported: x86_64, aarch64
   -b                       makes the image BIOS bootable
   -e                       makes the image EFI bootable
   -h                       shows this help message

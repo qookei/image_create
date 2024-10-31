@@ -3,7 +3,7 @@
 set -e
 
 usage() {
-	echo -e "usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-b] [-e]\n"
+	echo -e "usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-a arch] [-b] [-e]\n"
 
 	echo -e "Supported arguments:"
 	echo -e "\t -o output                specifies path to output image"
@@ -15,6 +15,8 @@ usage() {
 	echo -e "\t -s size                  specifies the image size, eg: 1G, 512M"
 	echo -e "\t -l loader                specifies the loader to use"
 	echo -e "\t                          supported loaders: grub, limine"
+	echo -e "\t -a arch                  create image for the requested architecture"
+	echo -e "\t                          default: x86_64, supported: x86_64, aarch64"
 	echo -e "\t -b                       makes the image BIOS bootable"
 	echo -e "\t -e                       makes the image EFI bootable"
 	echo -e "\t -h                       shows this help message\n"
@@ -38,10 +40,11 @@ parttype=
 partscheme=
 size=
 loader=
+arch=
 bios=
 efi=
 
-while getopts o:t:p:s:l:beh arg
+while getopts o:t:p:s:l:a:beh arg
 do
 	case $arg in
 		o) output="$OPTARG";;
@@ -62,6 +65,12 @@ do
 			case "$loader" in
 				grub|limine);;
 				*) echo "Loader $loader is not supported"; exit 1;;
+			esac
+			;;
+		a) arch="$OPTARG"
+			case "$arch" in
+				x86_64|aarch64);;
+				*) echo "Architecture $arch is not supported"; exit 1;;
 			esac
 			;;
 		b) bios=1;;
@@ -107,8 +116,17 @@ if [ -z "$bios" ] && [ -z "$efi" ]; then
 	exit 1;
 fi
 
+if [ -z "$arch" ]; then
+	arch="x86_64"
+fi
+
 if [ "$efi" ] && [ "$partscheme" != "gpt" ]; then
 	echo "EFI bootable images require GPT partition scheme."
+	exit 1;
+fi
+
+if [ "$bios" ] && [ "$arch" != "x86_64" ]; then
+	echo "BIOS boot is only valid on x86_64."
 	exit 1;
 fi
 
@@ -257,7 +275,14 @@ if [ "$loader" = "limine" ]; then
 	if [ "$efi" ]; then
 		mmd -i "$dosimg" "EFI"
 		mmd -i "$dosimg" "EFI/BOOT"
-		mcopy -i "$dosimg" "$limine_bin_dir/BOOTX64.EFI" "::EFI/BOOT/BOOTX64.EFI"
+
+		limine_efi_bin=
+		case "$arch" in
+			x86_64) limine_efi_bin="BOOTX64.EFI";;
+			aarch64) limine_efi_bin="BOOTAA64.EFI";;
+		esac
+
+		mcopy -i "$dosimg" "$limine_bin_dir/$limine_efi_bin" "::EFI/BOOT/BOOTX64.EFI"
 	fi
 else
 	# Install GRUB by mounting the partitions and invoking grub-install
@@ -281,7 +306,13 @@ else
 	if [ "$efi" ]; then
 		sudo mkdir -p "$mountpoint/boot/EFI/BOOT"
 
-		sudo grub-install --target=x86_64-efi --removable --boot-directory="$mountpoint/boot" "$lodev"
+		grub_target=
+		case "$arch" in
+			x86_64) grub_target="x86_64-efi";;
+			aarch64) grub_target="arm64-efi";;
+		esac
+
+		sudo grub-install --target="$grub_target" --removable --boot-directory="$mountpoint/boot" "$lodev"
 	fi
 
 	sudo umount "${lodev}p$bootpart"
