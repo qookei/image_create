@@ -3,7 +3,7 @@
 set -e
 
 usage() {
-	echo -e "usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-b] [-e] [-g]\n"
+	echo -e "usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-b] [-e]\n"
 
 	echo -e "Supported arguments:"
 	echo -e "\t -o output                specifies path to output image"
@@ -17,9 +17,9 @@ usage() {
 	echo -e "\t                          supported loaders: grub, limine"
 	echo -e "\t -b                       makes the image BIOS bootable"
 	echo -e "\t -e                       makes the image EFI bootable"
-	echo -e "\t -g                       use libguestfs instead of native mkfs and mount (allows for rootless image creation)"
-	echo -e "\t                          note: only limine is supported with this option"
 	echo -e "\t -h                       shows this help message\n"
+
+	echo -e "Note: installing GRUB requires that the image's partition are temporarily mounted, and as such requires root.\n"
 
 	echo "When using GPT, you can specify the GUID of the root partition by setting the GPT_TYPE environment variable."
 	echo -e "By default, the GUID for a Windows data partition is used.\n"
@@ -39,9 +39,8 @@ size=
 loader=
 bios=
 efi=
-use_guestfs=
 
-while getopts o:t:p:s:l:begh arg
+while getopts o:t:p:s:l:beh arg
 do
 	case $arg in
 		o) output="$OPTARG";;
@@ -66,7 +65,6 @@ do
 			;;
 		b) bios=1;;
 		e) efi=1;;
-		g) use_guestfs=1;;
 		h) usage; exit 0;;
 		?) echo "See -h for help."; exit 1;;
 	esac
@@ -124,10 +122,6 @@ if [ "$loader" = "limine" ]; then
 		echo "Directory ${limine_path} doesn't exist!"
 		exit 1
 	fi
-fi
-
-if [ "$use_guestfs" ] && [ "$loader" = "grub" ]; then
-	echo "GRUB is not supported when using libguestfs"
 fi
 
 dos_parttype=""
@@ -223,25 +217,49 @@ END_SFDISK
 		;;
 esac
 
-if [ ! "$use_guestfs" ]; then
+partition_offsets=$(partx -gbr --output nr,start,size "$output")
+
+bootpart_info=$(echo "$partition_offsets" | grep "^${bootpart} ")
+bootpart_start=$(echo "$bootpart_info" | cut -f2 -d' ')
+bootpart_size=$(echo "$bootpart_info" | cut -f3 -d' ')
+
+rootpart_info=$(echo "$partition_offsets" | grep "^${rootpart} ")
+rootpart_start=$(echo "$rootpart_info" | cut -f2 -d' ')
+rootpart_size=$(echo "$rootpart_info" | cut -f3 -d' ')
+
+# Format the boot partition
+mkfs.vfat -F 32 -n ESP -s 2 -S 512 --offset "$bootpart_start" "$output" "$((bootpart_size / 1024))"
+
+# Format the root partition
+case "$parttype" in
+	fat16)
+		mkfs.vfat -F 16 -s 2 -S 512 --offset "$rootpart_start" "$output" "$((rootpart_size / 1024))";;
+	fat32)
+		mkfs.vfat -F 32 -s 2 -S 512 --offset "$rootpart_start" "$output" "$((rootpart_size / 1024))";;
+	ext2|ext3|ext4)
+		mke2fs -Ft $parttype -E offset="$((rootpart_start * 512))" "$output" "$((rootpart_size / 1024))K";;
+esac
+
+# Install the bootloader
+if [ "$loader" = "limine" ]; then
+	# Install Limine files using mtools
+
+	dosimg="${output}@@$((bootpart_start * 512))"
+
+	if [ "$bios" ]; then
+		"$limine_path/limine" bios-install "$output"
+		mcopy -i "$dosimg" "$limine_path/limine-bios.sys" "::limine-bios.sys"
+	fi
+
+	if [ "$efi" ]; then
+		mmd -i "$dosimg" "EFI"
+		mmd -i "$dosimg" "EFI/BOOT"
+		mcopy -i "$dosimg" "$limine_path/BOOTX64.EFI" "::EFI/BOOT/BOOTX64.EFI"
+	fi
+else
+	# Install GRUB by mounting the partitions and invoking grub-install
+
 	lodev=$(sudo losetup -Pf --show "$output")
-
-	# Format the /boot/ partition as FAT32.
-	sudo mkfs.vfat -F 32 "${lodev}p$bootpart"
-
-	# Format root partition according to user-chosen type.
-	case "$parttype" in
-		fat16)
-			sudo mkfs.vfat -F 16 "${lodev}p$rootpart";;
-		fat32)
-			sudo mkfs.vfat -F 32 "${lodev}p$rootpart";;
-		ext2)
-			sudo mkfs.ext2 "${lodev}p$rootpart";;
-		ext3)
-			sudo mkfs.ext3 "${lodev}p$rootpart";;
-		ext4)
-			sudo mkfs.ext4 "${lodev}p$rootpart";;
-	esac
 
 	mountpoint=$(mktemp -d)
 	echo "Mountpoint is $mountpoint"
@@ -251,62 +269,20 @@ if [ ! "$use_guestfs" ]; then
 	sudo mount "${lodev}p$bootpart" "$mountpoint/boot"
 
 	if [ "$bios" ]; then
-		case "$loader" in
-			grub)
-				# i386-pc makes GRUB use the MBR or BIOS boot partition for its boot code,
-				# depending on the partition table type.
-				# Note that we do not have to partition the BIOS boot partition.
-				sudo grub-install --target=i386-pc --boot-directory="$mountpoint/boot" "$lodev"
-				;;
-			limine)
-				sudo cp "$limine_path/limine-bios.sys" "$mountpoint/boot"
-				sudo "$limine_path/limine" bios-install "$lodev"
-				;;
-		esac
+		# i386-pc makes GRUB use the MBR or BIOS boot partition for its boot code,
+		# depending on the partition table type.
+		# Note that we do not have to partition the BIOS boot partition.
+		sudo grub-install --target=i386-pc --boot-directory="$mountpoint/boot" "$lodev"
 	fi
 
 	if [ "$efi" ]; then
-		sudo mkdir -p "$mountpoint/boot/efi/boot"
+		sudo mkdir -p "$mountpoint/boot/EFI/BOOT"
 
-		case "$loader" in
-			grub)
-				sudo grub-install --target=x86_64-efi --removable --boot-directory="$mountpoint/boot" "$lodev"
-				;;
-			limine)
-				sudo cp "$limine_path/BOOTX64.EFI" "$mountpoint/boot/efi/boot/BOOTX64.EFI"
-				;;
-		esac
+		sudo grub-install --target=x86_64-efi --removable --boot-directory="$mountpoint/boot" "$lodev"
 	fi
 
 	sudo umount "${lodev}p$bootpart"
 	sudo umount "${lodev}p$rootpart"
 	rmdir "$mountpoint"
 	sudo losetup -d "$lodev"
-else
-	if [ "$bios" ]; then
-		"$limine_path/limine" bios-install "$output"
-	fi
-
-	cmds="run
-mkfs vfat /dev/sda$bootpart
-mkfs $parttype /dev/sda$rootpart"
-
-	cmds="$cmds
-mount /dev/sda$rootpart /
-mkdir /boot
-mount /dev/sda$bootpart /boot/"
-
-	if [ "$bios" ]; then
-		cmds="$cmds
-copy-in '$limine_path/limine-bios.sys' /boot/"
-	fi
-
-	if [ "$efi" ]; then
-		cmds="$cmds
-mkdir /boot/efi
-mkdir /boot/efi/boot
-copy-in '$limine_path/BOOTX64.EFI' /boot/efi/boot/"
-	fi
-
-	guestfish -a "$output" <<< "$cmds"
 fi

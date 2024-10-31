@@ -4,17 +4,17 @@ A simple tool to generate partitioned hard disk images.
 
 ## Requirements
  - losetup
- - sfdisk
+ - sfdisk, partx
  - mkfs for the corresponding file system
    - mkfs.vfat for fat16/32 (note: also required for EFI images, since they need a FAT32 ESP partition)
    - mkfs.ext2/3/4 for ext2/3/4 respectively
+ - mtools (when using `-l limine`)
  - grub-install (when using `-l grub`)
- - libguestfs (when using `-g`)
 
 ## Usage
 When you run image\_create without any arguments, or with `-h`, it'll print the following usage message:
 ```
-usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-b] [-e] [-g]
+usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-b] [-e]
 
 Supported arguments:
   -o output                specifies path to output image
@@ -28,9 +28,9 @@ Supported arguments:
                            supported loaders: grub, limine
   -b                       makes the image BIOS bootable
   -e                       makes the image EFI bootable
-  -g                       use libguestfs instead of native mkfs and mount (allows for rootless image creation)
-                           note: only limine is supported with this option
   -h                       shows this help message
+
+Note: installing GRUB requires that the image's partition are temporarily mounted, and as such requires root.
 
 When using GPT, you can specify the GUID of the root partition by setting the GPT_TYPE environment variable.
 By default, the GUID for a Windows data partition is used.
