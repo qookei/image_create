@@ -24,7 +24,8 @@ usage() {
 	echo "When using GPT, you can specify the GUID of the root partition by setting the GPT_TYPE environment variable."
 	echo -e "By default, the GUID for a Windows data partition is used.\n"
 
-	echo "The default path for Limine binaries is './limine/', you can specify a custom one by setting LIMINE_PATH."
+	echo "The default path for Limine binaries is '/usr/share/limine', you can specify a custom one by setting LIMINE_BIN_DIR."
+	echo "The default command for the 'limine' tool is 'limine', you can specify a custom one by setting LIMINE_TOOL."
 }
 
 if [ $# -eq 0 ]; then
@@ -111,15 +112,17 @@ if [ "$efi" ] && [ "$partscheme" != "gpt" ]; then
 	exit 1;
 fi
 
-limine_path="./limine"
+limine_bin_dir=${LIMINE_BIN_DIR:="/usr/share/limine/"}
+limine_tool=${LIMINE_TOOL:="limine"}
 
 if [ "$loader" = "limine" ]; then
-	if [ "$LIMINE_PATH" ]; then
-		limine_path="$LIMINE_PATH"
+	if [ ! -d "$limine_bin_dir" ]; then
+		echo "Directory $limine_bin_dir doesn't exist!"
+		exit 1
 	fi
 
-	if [ ! -d "$limine_path" ]; then
-		echo "Directory ${limine_path} doesn't exist!"
+	if [ ! -x "$limine_tool" ]; then
+		echo "Program $limine_tool doesn't exist or is not executable!"
 		exit 1
 	fi
 fi
@@ -247,14 +250,14 @@ if [ "$loader" = "limine" ]; then
 	dosimg="${output}@@$((bootpart_start * 512))"
 
 	if [ "$bios" ]; then
-		"$limine_path/limine" bios-install "$output"
-		mcopy -i "$dosimg" "$limine_path/limine-bios.sys" "::limine-bios.sys"
+		"$limine_tool" bios-install "$output"
+		mcopy -i "$dosimg" "$limine_bin_dir/limine-bios.sys" "::limine-bios.sys"
 	fi
 
 	if [ "$efi" ]; then
 		mmd -i "$dosimg" "EFI"
 		mmd -i "$dosimg" "EFI/BOOT"
-		mcopy -i "$dosimg" "$limine_path/BOOTX64.EFI" "::EFI/BOOT/BOOTX64.EFI"
+		mcopy -i "$dosimg" "$limine_bin_dir/BOOTX64.EFI" "::EFI/BOOT/BOOTX64.EFI"
 	fi
 else
 	# Install GRUB by mounting the partitions and invoking grub-install

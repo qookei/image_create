@@ -35,5 +35,6 @@ Note: installing GRUB requires that the image's partition are temporarily mounte
 When using GPT, you can specify the GUID of the root partition by setting the GPT_TYPE environment variable.
 By default, the GUID for a Windows data partition is used.
 
-The default path for Limine binaries is './limine/', you can specify a custom one by setting LIMINE_PATH.
+The default path for Limine binaries is '/usr/share/limine', you can specify a custom one by setting LIMINE_BIN_DIR.
+The default command for the 'limine' tool is 'limine', you can specify a custom one by setting LIMINE_TOOL.
 ```
