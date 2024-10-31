@@ -3,7 +3,7 @@
 set -e
 
 usage() {
-	echo -e "usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-b] [-e] [-n] [-g] [-c path]\n"
+	echo -e "usage: $0 [-o output] [-t partition type] [-p partition scheme] [-s size] [-l loader] [-b] [-e] [-g] [-c path]\n"
 
 	echo -e "Supported arguments:"
 	echo -e "\t -o output                specifies path to output image"
@@ -17,7 +17,6 @@ usage() {
 	echo -e "\t                          supported loaders: grub, limine"
 	echo -e "\t -b                       makes the image BIOS bootable"
 	echo -e "\t -e                       makes the image EFI bootable"
-	echo -e "\t -n                       don't fetch Limine (reuses existing './limine/' directory)"
 	echo -e "\t -g                       use libguestfs instead of native mkfs and mount (allows for rootless image creation)"
 	echo -e "\t                          note: only limine is supported with this option"
 	echo -e "\t -c path                  copy files from the specified directory into the root of the image"
@@ -26,7 +25,7 @@ usage() {
 	echo "When using GPT, you can specify the GUID of the root partition by setting the GPT_TYPE environment variable."
 	echo -e "By default, the GUID for a Windows data partition is used.\n"
 
-	echo "You can also specify the path to the directory with limine binaries (which automatically implies -n) by setting LIMINE_PATH."
+	echo "The default path for Limine binaries is './limine/', you can specify a custom one by setting LIMINE_PATH."
 }
 
 if [ $# -eq 0 ]; then
@@ -41,11 +40,10 @@ size=
 loader=
 bios=
 efi=
-no_fetch_limine=
 copy_dir_path=
 use_guestfs=
 
-while getopts o:t:p:s:l:bengc:h arg
+while getopts o:t:p:s:l:begc:h arg
 do
 	case $arg in
 		o) output="$OPTARG";;
@@ -70,7 +68,6 @@ do
 			;;
 		b) bios=1;;
 		e) efi=1;;
-		n) no_fetch_limine=1;;
 		c) copy_dir_path="$OPTARG";;
 		g) use_guestfs=1;;
 		h) usage; exit 0;;
@@ -123,19 +120,11 @@ limine_path="./limine"
 
 if [ "$loader" = "limine" ]; then
 	if [ "$LIMINE_PATH" ]; then
-		no_fetch_limine=1
 		limine_path="$LIMINE_PATH"
 	fi
 
-	if [ -z $no_fetch_limine ]; then
-		rm -rf "$limine_path"
-	fi
-
-	if [ ! -d "$limine_path" ] && [ -z "$LIMINE_PATH" ]; then
-		git clone https://github.com/limine-bootloader/limine --branch=v5.x-branch-binary --depth=1
-		make -C limine
-	elif [ ! -d "$limine_path" ]; then
-		echo "Directory specified by LIMINE_PATH doesn't exist."
+	if [ ! -d "$limine_path" ]; then
+		echo "Directory ${limine_path} doesn't exist!"
 		exit 1
 	fi
 fi
