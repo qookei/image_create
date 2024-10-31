@@ -184,7 +184,7 @@ case "$partscheme" in
 		cat << END_SFDISK | "$sfdisk_tool" --no-tell-kernel "$output"
 label: dos
 16MiB 256MiB 0c
-- +          $dos_parttype
+272MiB +     $dos_parttype
 END_SFDISK
 		;;
 	gpt)
