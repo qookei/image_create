@@ -182,6 +182,8 @@ esac
 gpt_type=${GPT_TYPE:="EBD0A0A2-B9E5-4433-87C0-68B6B72699C7"}
 
 sfdisk_tool="$(whereis -b sfdisk | cut -d':' -f2 | xargs)"
+mkfs_vfat_tool="$(whereis -b mkfs.vfat | cut -d':' -f2 | xargs)"
+mke2fs_tool="$(whereis -b mke2fs | cut -d':' -f2 | xargs)"
 
 rm -f "$output"
 fallocate -l "$size" "$output"
@@ -249,16 +251,16 @@ rootpart_start=$(echo "$rootpart_info" | cut -f2 -d' ')
 rootpart_size=$(echo "$rootpart_info" | cut -f3 -d' ')
 
 # Format the boot partition
-mkfs.vfat -F 32 -n ESP -s 2 -S 512 --offset "$bootpart_start" "$output" "$((bootpart_size / 1024))"
+"$mkfs_vfat_tool" -F 32 -n ESP -s 2 -S 512 --offset "$bootpart_start" "$output" "$((bootpart_size / 1024))"
 
 # Format the root partition
 case "$parttype" in
 	fat16)
-		mkfs.vfat -F 16 -s 2 -S 512 --offset "$rootpart_start" "$output" "$((rootpart_size / 1024))";;
+		"$mkfs_vfat_tool" -F 16 -s 2 -S 512 --offset "$rootpart_start" "$output" "$((rootpart_size / 1024))";;
 	fat32)
-		mkfs.vfat -F 32 -s 2 -S 512 --offset "$rootpart_start" "$output" "$((rootpart_size / 1024))";;
+		"$mkfs_vfat_tool" -F 32 -s 2 -S 512 --offset "$rootpart_start" "$output" "$((rootpart_size / 1024))";;
 	ext2|ext3|ext4)
-		mke2fs -Ft $parttype -E offset="$((rootpart_start * 512))" "$output" "$((rootpart_size / 1024))K";;
+		"$mke2fs_tool" -Ft "$parttype" -E offset="$((rootpart_start * 512))" "$output" "$((rootpart_size / 1024))K";;
 esac
 
 # Install the bootloader
