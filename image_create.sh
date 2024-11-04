@@ -210,31 +210,31 @@ END_SFDISK
 			# GRUB will use the entire partition in this case.
 			cat << END_SFDISK | "$sfdisk_tool" --no-tell-kernel "$output"
 label: gpt
-- 16MiB  21686148-6449-6E6F-744E-656564454649
-- 256MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
-- +      $gpt_type
+start=- size=16MiB type=21686148-6449-6E6F-744E-656564454649
+start=- size=256MiB type=uefi
+start=- size=+ type=$gpt_type
 END_SFDISK
 		elif [ -z "$efi" ] && [ "$loader" = "limine" ]; then
 			# Limine's boot code is embedded in GPT structures.
 			cat << END_SFDISK | "$sfdisk_tool" --no-tell-kernel "$output"
 label: gpt
-- 256MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
-- +      $gpt_type
+start=- size=256MiB type=uefi
+start=- size=+ type=$gpt_type
 END_SFDISK
 		elif [ -z "$bios" ] || [ "$loader" = "limine" ]; then
 			# Create an EFI system partition for GRUB's/Limine's boot files.
 			cat << END_SFDISK | "$sfdisk_tool" --no-tell-kernel "$output"
 label: gpt
-- 256MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
-- +      $gpt_type
+start=- size=256MiB type=uefi
+start=- size=+ type=$gpt_type
 END_SFDISK
 		else
 			# Combined GRUB EFI + GRUB legacy layout.
 			cat << END_SFDISK | "$sfdisk_tool" --no-tell-kernel "$output"
 label: gpt
-- 16MiB  21686148-6449-6E6F-744E-656564454649
-- 256MiB C12A7328-F81F-11D2-BA4B-00A0C93EC93B
-- +      $gpt_type
+start=- size=16MiB type=21686148-6449-6E6F-744E-656564454649
+start=- size=256MiB type=uefi
+start=- size=+ type=$gpt_type
 END_SFDISK
 		fi
 		;;
