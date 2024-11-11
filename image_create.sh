@@ -253,14 +253,25 @@ rootpart_size=$(echo "$rootpart_info" | cut -f3 -d' ')
 # Format the boot partition
 "$mkfs_vfat_tool" -F 32 -n ESP -s 2 -S 512 --offset "$bootpart_start" "$output" "$((bootpart_size / 1024))"
 
-# Format the root partition
+# Format the root partition and create a /boot directory on it.
 case "$parttype" in
 	fat16)
-		"$mkfs_vfat_tool" -F 16 -s 2 -S 512 --offset "$rootpart_start" "$output" "$((rootpart_size / 1024))";;
+		"$mkfs_vfat_tool" -F 16 -s 2 -S 512 --offset "$rootpart_start" "$output" "$((rootpart_size / 1024))"
+		dosimg="${output}@@$((rootpart_start * 512))"
+		mmd -i "$dosimg" "boot"
+		;;
 	fat32)
-		"$mkfs_vfat_tool" -F 32 -s 2 -S 512 --offset "$rootpart_start" "$output" "$((rootpart_size / 1024))";;
+		"$mkfs_vfat_tool" -F 32 -s 2 -S 512 --offset "$rootpart_start" "$output" "$((rootpart_size / 1024))"
+		dosimg="${output}@@$((rootpart_start * 512))"
+		mmd -i "$dosimg" "boot"
+		;;
 	ext2|ext3|ext4)
-		"$mke2fs_tool" -Ft "$parttype" -E offset="$((rootpart_start * 512))" "$output" "$((rootpart_size / 1024))K";;
+		tmpdir=$(mktemp -d)
+		mkdir -p "${tmpdir}/boot"
+		"$mke2fs_tool" -Ft "$parttype" -d "$tmpdir" -E offset="$((rootpart_start * 512))" "$output" "$((rootpart_size / 1024))K"
+		rmdir "${tmpdir}/boot" || echo "Did not delete temporary /boot at ${tmpdir}/boot (not empty?)"
+		rmdir "${tmpdir}/" || echo "Did not delete temporary / at ${tmpdir} (not empty?)"
+		;;
 esac
 
 # Install the bootloader
