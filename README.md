@@ -27,7 +27,7 @@ Supported arguments:
   -l loader                specifies the loader to use
                            supported loaders: grub, limine
   -a arch                  create image for the requested architecture
-                           default: x86_64, supported: x86_64, aarch64
+                           default: x86_64, supported: x86_64, aarch64, riscv64
   -b                       makes the image BIOS bootable
   -e                       makes the image EFI bootable
   -h                       shows this help message

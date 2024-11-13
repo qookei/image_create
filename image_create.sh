@@ -16,7 +16,7 @@ usage() {
 	echo -e "\t -l loader                specifies the loader to use"
 	echo -e "\t                          supported loaders: grub, limine"
 	echo -e "\t -a arch                  create image for the requested architecture"
-	echo -e "\t                          default: x86_64, supported: x86_64, aarch64"
+	echo -e "\t                          default: x86_64, supported: x86_64, aarch64, riscv64"
 	echo -e "\t -b                       makes the image BIOS bootable"
 	echo -e "\t -e                       makes the image EFI bootable"
 	echo -e "\t -h                       shows this help message\n"
@@ -69,7 +69,7 @@ do
 			;;
 		a) arch="$OPTARG"
 			case "$arch" in
-				x86_64|aarch64);;
+				x86_64|aarch64|riscv64);;
 				*) echo "Architecture $arch is not supported"; exit 1;;
 			esac
 			;;
@@ -293,6 +293,7 @@ if [ "$loader" = "limine" ]; then
 		case "$arch" in
 			x86_64) limine_efi_bin="BOOTX64.EFI";;
 			aarch64) limine_efi_bin="BOOTAA64.EFI";;
+			riscv64) limine_efi_bin="BOOTRISCV64.EFI";;
 		esac
 
 		mcopy -i "$dosimg" "$limine_bin_dir/$limine_efi_bin" "::EFI/BOOT/BOOTX64.EFI"
@@ -323,6 +324,7 @@ else
 		case "$arch" in
 			x86_64) grub_target="x86_64-efi";;
 			aarch64) grub_target="arm64-efi";;
+			riscv64) grub_target="riscv64-efi";;
 		esac
 
 		sudo grub-install --target="$grub_target" --removable --boot-directory="$mountpoint/boot" "$lodev"
