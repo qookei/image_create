@@ -205,23 +205,7 @@ label: dos
 END_SFDISK
 		;;
 	gpt)
-		if [ -z "$efi" ] && [ "$loader" = "grub" ]; then
-			# Create a BIOS boot partition for GRUB's boot code.
-			# GRUB will use the entire partition in this case.
-			cat << END_SFDISK | "$sfdisk_tool" --no-tell-kernel "$output"
-label: gpt
-start=- size=16MiB type=21686148-6449-6E6F-744E-656564454649
-start=- size=256MiB type=uefi
-start=- size=+ type=$gpt_type
-END_SFDISK
-		elif [ -z "$efi" ] && [ "$loader" = "limine" ]; then
-			# Limine's boot code is embedded in GPT structures.
-			cat << END_SFDISK | "$sfdisk_tool" --no-tell-kernel "$output"
-label: gpt
-start=- size=256MiB type=uefi
-start=- size=+ type=$gpt_type
-END_SFDISK
-		elif [ -z "$bios" ] || [ "$loader" = "limine" ]; then
+		if [ -z "$bios" ]; then
 			# Create an EFI system partition for GRUB's/Limine's boot files.
 			cat << END_SFDISK | "$sfdisk_tool" --no-tell-kernel "$output"
 label: gpt
@@ -230,6 +214,8 @@ start=- size=+ type=$gpt_type
 END_SFDISK
 		else
 			# Combined GRUB EFI + GRUB legacy layout.
+			# Both GRUB and Limine store their code in the BIOS boot partition.
+			# Note that we use the ESP even in the BIOS-only case (to store the kernel and initrd).
 			cat << END_SFDISK | "$sfdisk_tool" --no-tell-kernel "$output"
 label: gpt
 start=- size=16MiB type=21686148-6449-6E6F-744E-656564454649
