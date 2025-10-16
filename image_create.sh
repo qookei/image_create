@@ -282,7 +282,7 @@ if [ "$loader" = "limine" ]; then
 			riscv64) limine_efi_bin="BOOTRISCV64.EFI";;
 		esac
 
-		mcopy -i "$dosimg" "$limine_bin_dir/$limine_efi_bin" "::EFI/BOOT/BOOTX64.EFI"
+		mcopy -i "$dosimg" "$limine_bin_dir/$limine_efi_bin" "::EFI/BOOT/$limine_efi_bin"
 	fi
 else
 	# Install GRUB by mounting the partitions and invoking grub-install
