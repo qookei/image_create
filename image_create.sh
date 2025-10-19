@@ -159,25 +159,6 @@ case "$parttype" in
 		dos_parttype="83";;
 esac
 
-bootpart=
-rootpart=
-case "$partscheme" in
-	mbr)
-		bootpart="1"
-		rootpart="2"
-		;;
-	gpt)
-		if [ "$loader" = "grub" ] && [ "$bios" ]; then
-			# Partition 1 is the GRUB BIOS boot partition.
-			bootpart="2"
-			rootpart="3"
-		else
-			bootpart="1"
-			rootpart="2"
-		fi
-		;;
-esac
-
 # UUID of Windows data partition. Choose something else depending on your needs.
 gpt_type=${GPT_TYPE:="EBD0A0A2-B9E5-4433-87C0-68B6B72699C7"}
 
@@ -195,6 +176,8 @@ fallocate -l "$size" "$output"
 # necessary since Limine >= 6.0 drops support for Ext2/3/4. For images using
 # GRUB it is kept for consistency and to simplify the script logic.
 
+bootpart=
+rootpart=
 case "$partscheme" in
 	mbr)
 		# For MBR layouts, reserve some space before the first partition.
@@ -203,6 +186,8 @@ label: dos
 16MiB 256MiB 0c
 272MiB +     $dos_parttype
 END_SFDISK
+		bootpart="1"
+		rootpart="2"
 		;;
 	gpt)
 		if [ -z "$bios" ]; then
@@ -212,6 +197,8 @@ label: gpt
 start=- size=256MiB type=uefi
 start=- size=+ type=$gpt_type
 END_SFDISK
+			bootpart="1"
+			rootpart="2"
 		else
 			# Combined GRUB EFI + GRUB legacy layout.
 			# Both GRUB and Limine store their code in the BIOS boot partition.
@@ -222,6 +209,8 @@ start=- size=16MiB type=21686148-6449-6E6F-744E-656564454649
 start=- size=256MiB type=uefi
 start=- size=+ type=$gpt_type
 END_SFDISK
+			bootpart="2"
+			rootpart="3"
 		fi
 		;;
 esac
